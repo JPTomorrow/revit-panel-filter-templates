@@ -20,10 +20,20 @@ namespace JPMorrow.Revit.Custom.WallInspection
 		public List<CompoundStructureLayer> StructuralLayers { get => Type.GetCompoundStructure().GetLayers().ToList(); }
 		public List<Material> Materials  { get => WallInstance.GetMaterialIds(false).ToList().Select(x => RefDocument.GetElement(x) as Material).ToList(); }
 
-		public static List<(string WallName, CustomWallType WallType)> WallTypes { get; }  = new List<(string WallName, CustomWallType WallType)>() {
-				( "Block Wall", CustomWallType.BlockWall ),
-				( "Dry Wall With Metal Stud", CustomWallType.DryWallMetalStud ),
-				( "Solid Concrete", CustomWallType.SolidConcrete ),
+		public class WallNameWallTypePair {
+			public string WallName { get; set; }
+			public CustomWallType WallType { get; set; }
+
+			public WallNameWallTypePair(string wall_name, CustomWallType custom_type) {
+				WallName = wall_name;
+				WallType = custom_type;
+			}
+		}
+
+		public static List<WallNameWallTypePair> WallTypes { get; }  = new List<WallNameWallTypePair>() {
+				new WallNameWallTypePair( "Block Wall", CustomWallType.BlockWall ),
+				new WallNameWallTypePair( "Dry Wall With Metal Stud", CustomWallType.DryWallMetalStud ),
+				new WallNameWallTypePair( "Solid Concrete", CustomWallType.SolidConcrete ),
 			};
 
 		public CustomWallType DerivedWallType { get {
@@ -99,13 +109,23 @@ namespace JPMorrow.Revit.Custom.WallInspection
 
 			private static List<string> p { get => PossibleWallTypeWordMatches; }
 
-			public static List<(string[] MaterialWords, CustomWallType WallType)> WallTypeResolveDict { get; } = new List<(string[] MaterialWords, CustomWallType WallType)>() {
-				( new string[] { "brk", "brick" } , 					CustomWallType.BlockWall ),
-				( new string[] { "gwb", "gypsum", "metal", "stud" }, 	CustomWallType.DryWallMetalStud ),
-				( new string[] { "concrete", "brick" }, 				CustomWallType.SolidConcrete )
+			public static List<MaterialWordsWallTypePair> WallTypeResolveDict { get; } = new List<MaterialWordsWallTypePair>() {
+				new MaterialWordsWallTypePair( new string[] { "brk", "brick" } , 					CustomWallType.BlockWall ),
+				new MaterialWordsWallTypePair( new string[] { "gwb", "gypsum", "metal", "stud" }, 	CustomWallType.DryWallMetalStud ),
+				new MaterialWordsWallTypePair( new string[] { "concrete", "brick" }, 				CustomWallType.SolidConcrete )
 			};
 
 			public static CustomWallType DefaultWallType { get => CustomWallType.DryWallMetalStud; }
+		}
+	}
+
+	public class MaterialWordsWallTypePair {
+		public string[] MaterialWords { get; set; }
+		public CustomWallType WallType { get; set; }
+
+		public MaterialWordsWallTypePair(string[] mat_words, CustomWallType custom_type) {
+			MaterialWords = mat_words;
+			WallType = custom_type;
 		}
 	}
 

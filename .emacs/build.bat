@@ -1,7 +1,7 @@
 @echo off
 
-set compiler_path="D:\Build Tools\Visual Sudio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
-set project_file="Y:\Marathon_Program_Source\Revit_C#\PanelFilterTemplates\Build.csproj"
+set compiler_path="G:\BuildTools\Visual Sudio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+set project_file=%~dp0\..\Build.csproj
 set build=/t:Build
 set config=/p:Configuration=Release
 set platform=/p:Platform="AnyCPU"

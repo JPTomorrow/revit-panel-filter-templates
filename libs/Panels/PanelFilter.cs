@@ -177,23 +177,19 @@ namespace JPMorrow.Revit.Panels
                 
                 if(idx != -1) info.DOC.Delete(Filters.ToList()[idx].FilterId);
                 filter.SetCategories(bics);
-                
-                // make rules for new filter
                 var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, f.FilterName, true);
-                var to_ws_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(to_id);
-                var 
+		
                 var rule_arr = new[] { from_rule };
                 var el_f = new ElementParameterFilter(rule_arr);
-                
-                if(ver.IsVersionBelowYear(2019)) {
-                    SetFilter(filter, rule_arr);
-                }
-                else {
-                    SetFilter(filter, el_f);
-                }
+
+#if REVIT2017 || REVIT2018 
+                filter.SetRules(rule_arr);
+#else
+                filter.SetElementFilter(el_f);
+#endif
 
                 filter.Name = ViewFilter.FilterPrefix + " " + filter.Name;
-            } 
+            }
 
             tx.Commit();
 
@@ -244,8 +240,11 @@ namespace JPMorrow.Revit.Panels
                     var el_f = new ElementParameterFilter(rule_arr);
 
                     try {
-                        
+#if REVIT2017 || REVIT2018 
+                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, rule_arr);
+#else
                         ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, el_f);
+#endif
                     }
                     catch {
                         failed_panel_names.Add(name);
@@ -287,16 +286,6 @@ namespace JPMorrow.Revit.Panels
                     "\" on conduit and conduit fittings.");
             
             return conduit.LookupParameter(param).Id;
-        }
-
-        // WARNING: KEEP THESE LOCKED AWAY INSIDE THIS FUNCTION OR ELSE IT WILL DESTROY THE PROGRAM... DONT ASK WHY
-        private static void SetFilter(ParameterFilterElement filter, ElementParameterFilter rules) {
-            filter.SetElementFilter(rules);
-        }
-
-        // WARNING: KEEP THESE LOCKED AWAY INSIDE THIS FUNCTION OR ELSE IT WILL DESTROY THE PROGRAM... DONT ASK WHY
-        private static void SetFilter(ParameterFilterElement filter, FilterRule[] rules) {
-            filter.SetRules(rules);
         }
     }
 
