@@ -1,9 +1,15 @@
+///
+/// THIS CODE IS NOT SAFE FOR REUSE WITH A UI DRIVEN APP FOR REVIT.
+/// IT DOES NOT IMPLEMENT EXTERNAL EVENTS FOR COMMUNICATION
+///
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using JPMorrow.Revit.Documents;
 using JPMorrow.Revit.Versioning;
+using JPMorrow.Revit.Worksets;
 using JPMorrow.Tools.Diagnostics;
 
 namespace JPMorrow.Revit.Panels
@@ -11,11 +17,6 @@ namespace JPMorrow.Revit.Panels
     using SelFunc = Func<ModelInfo, IEnumerable<ViewFilter>, IEnumerable<ViewFilter>>; 
     using SelSwapDict = System.Collections.Generic.Dictionary<FilterGroupSelection, Func<ModelInfo, IEnumerable<ViewFilter>, IEnumerable<ViewFilter>>>;
     
-    ///
-    /// THIS CODE IS NOT SAFE FOR REUSE WITH A UI DRIVEN APP FOR REVIT.
-    /// IT DOES NOT IMPLEMENT EXTERNAL EVENTS FOR COMMUNICATION
-    ///
-
     public enum FilterGroupSelection {
         InvalidGenerated,
         PanelGenerated,
@@ -154,6 +155,13 @@ namespace JPMorrow.Revit.Panels
         // to be have the appropriate prefix and settings
         public void ConvertNonGeneratedToGenerated(ModelInfo info) {
 
+            var branch_ws = WorksetManager.CreateWorkset(info.DOC, "branch");
+
+            if(branch_ws == null) {
+                debugger.show(header: "Convert Panel Filters", err:"Could not create the branch workset. No panel filters will be converted.");
+                return;
+            }
+
             var non_gen = Filters.Where(x => !x.IsGenerated);
             RevitVersion ver = new RevitVersion(info);
 
@@ -177,16 +185,21 @@ namespace JPMorrow.Revit.Panels
                 
                 if(idx != -1) info.DOC.Delete(Filters.ToList()[idx].FilterId);
                 filter.SetCategories(bics);
-                var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, f.FilterName, true);
-		
-                var rule_arr = new[] { from_rule };
-                var el_f = new ElementParameterFilter(rule_arr);
 
-#if REVIT2017 || REVIT2018 
-                filter.SetRules(rule_arr);
-#else
-                filter.SetElementFilter(el_f);
-#endif
+                var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, f.FilterName, true);
+                var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Name, true);
+                var to_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(to_id);
+                var wire_size_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(wsize_id);
+
+                var from_filter = new ElementParameterFilter(from_rule);
+                var to_filter = new ElementParameterFilter(to_rule);
+                var wire_size_filter = new ElementParameterFilter(wire_size_rule);
+                var workset_branch_filter = new ElementParameterFilter(workset_branch_rule);
+
+                LogicalAndFilter and = new LogicalAndFilter(new[] { to_filter, wire_size_filter });
+                LogicalAndFilter final_and = new LogicalAndFilter(new ElementFilter[] { from_filter, workset_branch_filter, and });
+
+                filter.SetElementFilter(final_and);
 
                 filter.Name = ViewFilter.FilterPrefix + " " + filter.Name;
             }
@@ -204,6 +217,13 @@ namespace JPMorrow.Revit.Panels
         // have a corresponding generated or non generated filter already
         // returns: names of panels that it failed to create a filter for because of duplicate naming errors
         public IEnumerable<string> GenerateMissingPanelFilters(ModelInfo info) {
+
+            var branch_ws = WorksetManager.CreateWorkset(info.DOC, "branch");
+            
+            if(branch_ws == null) {
+                debugger.show(header: "Convert Panel Filters", err:"Could not create the branch workset. No panel filters will be converted.");
+                return new List<string>();
+            }
 
             var failed_panel_names = new List<string>();
             
@@ -235,16 +255,22 @@ namespace JPMorrow.Revit.Panels
 
                 if(idx == -1) {
                     // make rules for new filter
+
                     var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, name, true);
-                    var rule_arr = new[] { from_rule };
-                    var el_f = new ElementParameterFilter(rule_arr);
+                    var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Name, true);
+                    var to_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(to_id);
+                    var wire_size_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(wsize_id);
+
+                    var from_filter = new ElementParameterFilter(from_rule);
+                    var to_filter = new ElementParameterFilter(to_rule);
+                    var wire_size_filter = new ElementParameterFilter(wire_size_rule);
+                    var workset_branch_filter = new ElementParameterFilter(workset_branch_rule);
+
+                    LogicalAndFilter and = new LogicalAndFilter(new[] { to_filter, wire_size_filter });
+                    LogicalAndFilter final_and = new LogicalAndFilter(new ElementFilter[] { from_filter, workset_branch_filter, and });
 
                     try {
-#if REVIT2017 || REVIT2018 
-                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, rule_arr);
-#else
-                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, el_f);
-#endif
+                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, final_and);
                     }
                     catch {
                         failed_panel_names.Add(name);
