@@ -162,6 +162,8 @@ namespace JPMorrow.Revit.Panels
                 return;
             }
 
+            debugger.show(err:branch_ws.Name);
+
             var non_gen = Filters.Where(x => !x.IsGenerated);
             RevitVersion ver = new RevitVersion(info);
 
@@ -187,7 +189,7 @@ namespace JPMorrow.Revit.Panels
                 filter.SetCategories(bics);
 
                 var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, f.FilterName, true);
-                var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Name, true);
+                var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Id.IntegerValue);
                 var to_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(to_id);
                 var wire_size_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(wsize_id);
 
@@ -196,10 +198,9 @@ namespace JPMorrow.Revit.Panels
                 var wire_size_filter = new ElementParameterFilter(wire_size_rule);
                 var workset_branch_filter = new ElementParameterFilter(workset_branch_rule);
 
-                LogicalAndFilter and = new LogicalAndFilter(new[] { to_filter, wire_size_filter });
-                LogicalAndFilter final_and = new LogicalAndFilter(new ElementFilter[] { from_filter, workset_branch_filter, and });
+                LogicalAndFilter final_filter = new LogicalAndFilter(new ElementFilter[] { from_filter, to_filter, workset_branch_filter, wire_size_filter });
 
-                filter.SetElementFilter(final_and);
+                filter.SetElementFilter(final_filter);
 
                 filter.Name = ViewFilter.FilterPrefix + " " + filter.Name;
             }
@@ -257,7 +258,7 @@ namespace JPMorrow.Revit.Panels
                     // make rules for new filter
 
                     var from_rule = ParameterFilterRuleFactory.CreateEqualsRule(from_id, name, true);
-                    var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Name, true);
+                    var workset_branch_rule = ParameterFilterRuleFactory.CreateEqualsRule(workset_id, branch_ws.Id.IntegerValue);
                     var to_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(to_id);
                     var wire_size_rule = ParameterFilterRuleFactory.CreateHasValueParameterRule(wsize_id);
 
@@ -266,11 +267,10 @@ namespace JPMorrow.Revit.Panels
                     var wire_size_filter = new ElementParameterFilter(wire_size_rule);
                     var workset_branch_filter = new ElementParameterFilter(workset_branch_rule);
 
-                    LogicalAndFilter and = new LogicalAndFilter(new[] { to_filter, wire_size_filter });
-                    LogicalAndFilter final_and = new LogicalAndFilter(new ElementFilter[] { from_filter, workset_branch_filter, and });
+                    LogicalAndFilter final_filter = new LogicalAndFilter(new ElementFilter[] { from_filter, to_filter, workset_branch_filter, wire_size_filter });
 
                     try {
-                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, final_and);
+                        ParameterFilterElement.Create(info.DOC, ViewFilter.FilterPrefix + " " + name, bics, final_filter);
                     }
                     catch {
                         failed_panel_names.Add(name);
