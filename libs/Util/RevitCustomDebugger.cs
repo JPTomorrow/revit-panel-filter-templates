@@ -8,6 +8,7 @@ namespace JPMorrow.Tools.Diagnostics
 {
 	public delegate void DEBUG_DELEGATE_1(string header = "Error", string sub = "Generic", string err = "", int max_itr = -1);
     public delegate DialogResult DEBUG_DELEGATE_2(string err = "", string header = "Warning!", string continue_txt = "Do you want to continue?");
+	
 	public static class debugger
 	{
 		public static DEBUG_DELEGATE_1 show = RevitCustom.RevitCustomDebugger.Show;

@@ -74,7 +74,6 @@ namespace JPMorrow.Revit.Panels
         public static ProjectFilterGroup CreateProjectFilterGroup(
             ModelInfo info, FilterGroupSelection selection) {
 
-            
             var coll = new FilteredElementCollector(info.DOC);
             var filter_ids = coll.OfClass(typeof(ParameterFilterElement)).ToElementIds();
             var filters = ViewFilter.CreateViewFilters(info, filter_ids);
@@ -161,8 +160,6 @@ namespace JPMorrow.Revit.Panels
                 debugger.show(header: "Convert Panel Filters", err:"Could not create the branch workset. No panel filters will be converted.");
                 return;
             }
-
-            debugger.show(err:branch_ws.Name);
 
             var non_gen = Filters.Where(x => !x.IsGenerated);
             RevitVersion ver = new RevitVersion(info);
@@ -363,11 +360,12 @@ namespace JPMorrow.Revit.Panels
         
         public string FilterName { get; private set; }
         public ElementId FilterId { get; private set; }
+        public string PanelName { get => FilterName.Contains(FilterPrefix) ? FilterName.Replace(FilterPrefix, "").Trim() : ""; }
 
         public static readonly string FilterPrefix = "(AUTO-PANEL)";
 
         public bool IsGenerated => FilterName.StartsWith(FilterPrefix);
-        
+
         public override string ToString() {
             return FilterName + " - " + FilterId.IntegerValue.ToString();
         }

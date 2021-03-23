@@ -9,6 +9,7 @@ using forms = System.Windows.Forms;
 using JPMorrow.Revit.Panels;
 using System.Collections.Generic;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
+using System.Windows;
 
 namespace MainApp
 {
@@ -52,7 +53,12 @@ namespace MainApp
                 return Result.Succeeded;
             }
             
-            var filter_group = ProjectFilterGroup.CreateProjectFilterGroup(info, FilterGroupSelection.InvalidGenerated);
+            // ask user if they want to regenerate all filters
+            var r = MessageBox.Show("Do you want to regenerate all filters tagged with (AUTO-PANEL)?", "Panel Filters", MessageBoxButton.YesNo);
+            var filter_group = r == MessageBoxResult.Yes ? 
+                ProjectFilterGroup.CreateProjectFilterGroup(info, FilterGroupSelection.PanelGenerated) : 
+                ProjectFilterGroup.CreateProjectFilterGroup(info, FilterGroupSelection.InvalidGenerated);
+
             filter_group.DeleteFilters(info);
 
             filter_group = ProjectFilterGroup.CreateProjectFilterGroup(info, FilterGroupSelection.PanelAll);
@@ -72,15 +78,35 @@ namespace MainApp
                 "Final Panel Filters\n\n" +
                 filter_group.ToString());
             
-            /* OLD METHOD
-			try {
-				ParentView pv = new ParentView(revit_info, main_rvt_wind);
-				pv.Show();
-			}
-			catch(Exception ex) {
-				debugger.show(err:ex.ToString());
-			}
-            */            
+                      
+            // Add panel filters to views
+            coll = new FilteredElementCollector(info.DOC);
+            var all_floorplans = coll
+                .OfCategory(BuiltInCategory.OST_Views)
+                .Where(x => (x as View).ViewType == ViewType.FloorPlan).ToList();
+
+            foreach(var v in all_floorplans) {
+                
+                var vv = v as View;
+
+                FilteredElementCollector panel_coll = new FilteredElementCollector(info.DOC);
+
+                var panels = panel_coll
+                    .OfCategory(BuiltInCategory.OST_ElectricalEquipment)
+                    .OfClass(typeof(FamilyInstance))
+                    .Where(x => (x as FamilyInstance).Symbol.FamilyName.ToLower().Contains("panelboard"))
+                    .ToList();
+
+                string pn(Element el) => el.LookupParameter("Panel Name").AsString();
+
+                var filters_for_view = filter_group.Filters.Where(x => panels.Any(y => pn(y).Equals(x.PanelName))).ToList();
+
+                filters_for_view.ForEach(f => {
+                    // @TODO : need to assign color
+                    OverrideGraphicSettings ogs = new OverrideGraphicSettings();
+                    vv.SetFilterOverrides(f.FilterId, ogs);
+                });
+            }
 
 			return Result.Succeeded;
         }
